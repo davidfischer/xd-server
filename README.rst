@@ -35,6 +35,5 @@ Todo list
   such as the count by publisher, the most common clues and answers,
   and the most prolific authors.
 * Allow uploading crosswords and find similar ones
-* Improve speed of crossword importing
 * Separate settings for dev and prod
 * Handle Rebus crosswords

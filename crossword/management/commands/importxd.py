@@ -40,13 +40,19 @@ class Command(BaseCommand):
         return retval
 
     def handle(self, *args, **options):
+        imported = 0
+
         for xdfile in options['xdfile']:
 
             path = Path(xdfile)
+            xword_slug = path.stem
+
+            if Crossword.objects.filter(slug=xword_slug).exists():
+                self.stderr.write('Crossword {} already imported'.format(xword_slug))
+                continue
 
             # Assumes pubid is first 3 chars of the filename
-            xword_slug = path.stem
-            pub_slug = path.stem[:3]
+            pub_slug = xword_slug[:3]
             publication = Publication.objects.filter(slug=pub_slug).first()
             if not publication:
                 self.stderr.write('Publication matching {} not found'.format(pub_slug))
@@ -61,22 +67,27 @@ class Command(BaseCommand):
                         slug=xword_slug,
                         name=data['title'],
                         author=data['author'],
-                        editor=data['editor'],
+                        editor=data.get('editor', ''),
                         grid=data['grid'],
                         date=datetime.datetime.fromisoformat(data['date']).date(),
                     )
                     crossword.save()
 
+                    clues = []
                     for clue_data in data['clues']:
                         clue = Clue(
                             crossword=crossword,
                             direction=clue_data['direction'],
                             number=clue_data['number'],
                             clue=clue_data['clue'],
-                            answer=clue_data['answer'],
+                            answer=clue_data['answer'].upper(),
                         )
-                        clue.save()
+                        clues.append(clue)
+
+                    Clue.objects.bulk_create(clues)
+                    self.stdout.write('Saved {}'.format(xword_slug))
+                    imported += 1
             except IOError:
                 self.stderr.write('Failed to find file {}'.format(xdfile))
 
-        self.stdout.write(self.style.SUCCESS('Success'))
+        self.stdout.write(self.style.SUCCESS('Successfully imported {} crosswords'.format(imported)))
